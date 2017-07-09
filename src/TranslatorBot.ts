@@ -37,7 +37,7 @@ export class TranslatorBot extends builder.UniversalBot {
         // Handle compose extension invokes
         let teamsConnector = this._connector as msteams.TeamsChatConnector;
         if (teamsConnector.onQuery) {
-            teamsConnector.onQuery("search", (event, query, cb) => { this.onComposeExtensionQuery(event, query, cb); });
+            teamsConnector.onQuery("translate", (event, query, cb) => { this.onComposeExtensionQuery(event, query, cb); });
         }
 
         // Register default dialog
@@ -51,7 +51,29 @@ export class TranslatorBot extends builder.UniversalBot {
     private async onComposeExtensionQuery(event: builder.IEvent, query: msteams.ComposeExtensionQuery, cb: (err: Error, result: msteams.IComposeExtensionResponse, statusCode?: number) => void): Promise<void> {
         let session = await this.loadSessionAsync(event.address);
         if (session) {
+            let text = (query.parameters[0].name === "text") ? query.parameters[0].value : "";
+            if (text) {
+                try {
+                    let translation = await this.translator.translateText(text, "it");
+                    let response = msteams.ComposeExtensionResponse.result("list")
+                        .attachments([
+                            new builder.ThumbnailCard().title(translation).toAttachment(),
+                        ]);
+                    cb(null, response.toResponse());
+                } catch (e) {
+                    cb(null, this.createMessageResponse("Oops, there was a problem translating the text you entered."));
+                }
+            } else {
+                cb(null, this.createMessageResponse("Enter text to translate"));
+            }
+        } else {
             cb(new Error(), null, 500);
         }
+    }
+
+    private createMessageResponse(text: string): msteams.IComposeExtensionResponse {
+        let response = new msteams.ComposeExtensionResponse("message");
+        (response as any).data.text = text;
+        return response.toResponse();
     }
 }
