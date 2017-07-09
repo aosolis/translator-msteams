@@ -6,6 +6,8 @@
 // tslint:disable-next-line:variable-name
 export const Strings = {
    "error_generic": "error_generic",
+   "error_translation": "error_translation",
+   "error_notext": "error_notext",
    "af": "af",
    "ar": "ar",
    "bn": "bn",

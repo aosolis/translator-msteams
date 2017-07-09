@@ -1,6 +1,7 @@
 import * as builder from "botbuilder";
 import * as msteams from "botbuilder-teams";
 import { TranslatorApi, TranslationResult } from "./TranslatorApi";
+import { Strings } from "./locale/locale";
 
 // =========================================================
 // Bot Setup
@@ -61,19 +62,19 @@ export class TranslatorBot extends builder.UniversalBot {
                             .map(translation => this.createResult(session, translation)));
                     cb(null, response.toResponse());
                 } catch (e) {
-                    cb(null, this.createMessageResponse("Oops, there was a problem translating the text you entered."));
+                    cb(null, this.createMessageResponse(session, Strings.error_translation));
                 }
             } else {
-                cb(null, this.createMessageResponse("Enter text to translate"));
+                cb(null, this.createMessageResponse(session, Strings.error_notext));
             }
         } else {
             cb(new Error(), null, 500);
         }
     }
 
-    private createMessageResponse(text: string): msteams.IComposeExtensionResponse {
+    private createMessageResponse(session: builder.Session, text: string): msteams.IComposeExtensionResponse {
         let response = new msteams.ComposeExtensionResponse("message");
-        (response as any).data.text = text;
+        (response as any).data.composeExtension.text = session.gettext(text);
         return response.toResponse();
     }
 
