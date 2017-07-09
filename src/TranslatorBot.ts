@@ -42,8 +42,8 @@ export class TranslatorBot extends builder.UniversalBot {
 
         // Register default dialog
         this.dialog("/", async (session) => {
-            let text = await this.translator.translateText(session.message.text, "it");
-            session.endDialog(text);
+            let result = await this.translator.translateText(session.message.text, "it");
+            session.endDialog(result.translatedText);
         });
     }
 
@@ -57,7 +57,7 @@ export class TranslatorBot extends builder.UniversalBot {
                     let translation = await this.translator.translateText(text, "it");
                     let response = msteams.ComposeExtensionResponse.result("list")
                         .attachments([
-                            new builder.ThumbnailCard().title(translation).toAttachment(),
+                            new builder.ThumbnailCard().title(translation.translatedText).toAttachment(),
                         ]);
                     cb(null, response.toResponse());
                 } catch (e) {

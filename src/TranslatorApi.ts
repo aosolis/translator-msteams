@@ -1,3 +1,4 @@
+import * as _ from "lodash";
 import * as request from "request";
 import * as xml2js from "xml2js";
 
@@ -7,6 +8,13 @@ import * as xml2js from "xml2js";
 
 // Access tokens last 10 minutes, but refresh every 9 minutes to be safe
 const accessTokenLifetimeMs = 9 * 60 * 1000;
+
+export interface TranslationResult {
+    from?: string;
+    text: string;
+    to: string;
+    translatedText: string;
+}
 
 export class TranslatorApi {
 
@@ -19,32 +27,50 @@ export class TranslatorApi {
     {
     }
 
-    public async translateText(text: string, to: string): Promise<string> {
-        // Default to valid parameters
-        text = text || "";
-        to = to || "en";
+    public async translateText(text: string, to: string, from?: string): Promise<TranslationResult> {
+        // Escape parameters
+        let escapedText = text ? _.escape(text) : "";
+        let escapedTo = to ? _.escape(to) : "en";
+        let escapedFrom = from ? _.escape(from) : "";
 
-        let url = `https://api.microsofttranslator.com/v2/http.svc/Translate?text=${encodeURIComponent(text)}&to=${encodeURIComponent(to)}`;
+        let body = `
+<TranslateArrayRequest>
+  <AppId />
+  <From>${escapedFrom}</From>
+  <Texts>
+    <string xmlns="http://schemas.microsoft.com/2003/10/Serialization/Arrays">${escapedText}</string>
+  </Texts>
+  <To>${escapedTo}</To>
+</TranslateArrayRequest>`;
+
+        let url = "https://api.microsofttranslator.com/v2/http.svc/TranslateArray";
         let authHeader = await this.getAuthorizationHeader();
         let options: request.Options = {
             url: url,
             headers: {
+                "Content-Type": "application/xml",
                 "Authorization": authHeader,
             },
+            body: body,
         };
 
-        return new Promise<string>((resolve, reject) => {
-            request.get(options, (error, response, body) => {
+        return new Promise<TranslationResult>((resolve, reject) => {
+            request.post(options, (error, response, responseBody) => {
                 if (error) {
                     reject(error);
                 } else if (response.statusCode !== 200) {
                     reject(new Error(response.statusMessage));
                 } else {
-                    xml2js.parseString(body as string, (parseError, result) => {
+                    xml2js.parseString(responseBody as string, (parseError, result) => {
                         if (parseError) {
                             reject(parseError);
                         } else {
-                            resolve(result.string._);
+                            resolve({
+                                from: result.ArrayOfTranslateArrayResponse.TranslateArrayResponse[0].From[0],
+                                text: text,
+                                to: to,
+                                translatedText: result.ArrayOfTranslateArrayResponse.TranslateArrayResponse[0].TranslatedText[0],
+                            });
                         }
                     });
                 }
