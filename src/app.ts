@@ -33,8 +33,7 @@ app.use(bodyParser.json());
 
 // Configure storage
 let botStorage = null;
-let channelStorage = null;
-if (config.get("channelStorage") === "mongoDb") {
+if (config.get("storage") === "mongoDb") {
     botStorage = new MongoDbBotStorage(config.get("mongoDb.botStateCollection"), config.get("mongoDb.connectionString"));
 }
 
@@ -44,7 +43,6 @@ let connector = new msteams.TeamsChatConnector({
     appPassword: config.get("bot.appPassword"),
 });
 let botSettings = {
-    channelStorage: channelStorage,
     storage: botStorage,
 };
 let bot = new TranslatorBot(connector, botSettings);
