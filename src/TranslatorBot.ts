@@ -1,5 +1,6 @@
 import * as builder from "botbuilder";
 import * as msteams from "botbuilder-teams";
+import { TranslatorApi } from "./TranslatorApi";
 
 // =========================================================
 // Bot Setup
@@ -8,6 +9,7 @@ import * as msteams from "botbuilder-teams";
 export class TranslatorBot extends builder.UniversalBot {
 
     private loadSessionAsync: {(address: builder.IAddress): Promise<builder.Session>};
+    private translator: TranslatorApi;
 
     constructor(
         public _connector: builder.IConnector,
@@ -16,6 +18,8 @@ export class TranslatorBot extends builder.UniversalBot {
     {
         super(_connector, botSettings);
         this.set("persistConversationData", true);
+
+        this.translator = botSettings.translator as TranslatorApi;
 
         // Handle invoke events
         this.loadSessionAsync = (address) => {
@@ -37,8 +41,9 @@ export class TranslatorBot extends builder.UniversalBot {
         }
 
         // Register default dialog
-        this.dialog("/", (session) => {
-            session.endDialog("This is a compose extension");
+        this.dialog("/", async (session) => {
+            let text = await this.translator.translateText(session.message.text, "it");
+            session.endDialog(text);
         });
     }
 

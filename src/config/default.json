@@ -7,6 +7,9 @@
         "appId": "58ef13de-4707-4a63-8a65-89be4e303759",
         "appPassword": "<secret>"
     },
+    "translator": {
+        "accessKey": "<secret>"
+    },
     "storage": "botFramework",
     "mongoDb": {
         "connectionString": "",

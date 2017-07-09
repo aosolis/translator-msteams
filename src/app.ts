@@ -9,6 +9,7 @@ let logger = require("morgan");
 let config = require("config");
 import * as msteams from "botbuilder-teams";
 import * as winston from "winston";
+import { TranslatorApi } from "./TranslatorApi";
 import { TranslatorBot } from "./TranslatorBot";
 import { MongoDbBotStorage } from "./storage/MongoDbBotStorage";
 import * as utils from "./utils";
@@ -44,6 +45,7 @@ let connector = new msteams.TeamsChatConnector({
 });
 let botSettings = {
     storage: botStorage,
+    translator: new TranslatorApi(config.get("translator.accessKey")),
 };
 let bot = new TranslatorBot(connector, botSettings);
 
