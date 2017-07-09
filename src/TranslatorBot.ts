@@ -30,10 +30,16 @@ export class TranslatorBot extends builder.UniversalBot {
             });
         };
 
+        // Handle compose extension invokes
         let teamsConnector = this._connector as msteams.TeamsChatConnector;
         if (teamsConnector.onQuery) {
             teamsConnector.onQuery("search", (event, query, cb) => { this.onComposeExtensionQuery(event, query, cb); });
         }
+
+        // Register default dialog
+        this.dialog("/", (session) => {
+            session.endDialog("This is a compose extension");
+        });
     }
 
     // Handle compose extension query invocation
