@@ -1,0 +1,76 @@
+﻿{
+  "$schema": "https://statics.teams.microsoft.com/sdk/v1.0/manifest/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.0",
+  "version": "1.0",
+  "id": "49E6F432-D79C-49E8-94F7-89B94F3672FD",
+  "packageName": "com.trello.microsoftteams",
+  "developer": {
+    "name": "Trello",
+    "websiteUrl": "https://trello.com/",
+    "privacyUrl": "https://trello.com/privacy",
+    "termsOfUseUrl": "https://trello.com/legal"
+  },
+  "name": {
+    "short": "Trello"
+  },
+  "description": {
+    "short": "Trello lets you work more collaboratively and get more done.",
+    "full": "Trello lets your team work more collaboratively and get more done. Trello’s boards, lists, and cards enable you to organize and prioritize your projects in a fun, flexible and rewarding way."
+  },
+  "icons": {
+    "outline": "trello_outline20.png",
+    "color": "trello_color96.png"
+  },
+  "accentColor": "#0079bf",
+  "configurableTabs": [
+    {
+      "configurationUrl": "https://trello.com/integrations/teams/tab-config?iframeSource=msteams&theme={theme}",
+      "canUpdateConfiguration": false,
+      "scopes": [
+        "team"
+      ]
+    }
+  ],
+  "staticTabs": [
+  ],
+  "bots": [
+    {
+      "botId": "58ef13de-4707-4a63-8a65-89be4e303759",
+      "scopes": [
+        "team",
+        "personal"
+      ]
+    }
+  ],
+  "composeExtensions": [
+    {
+      "botId": "58ef13de-4707-4a63-8a65-89be4e303759",
+      "scopes": [
+        "personal",
+        "team"
+      ],
+      "commands": [
+        {
+          "id": "search",
+          "title": "Search",
+          "description": "Find a card",
+          "initialRun": true,
+          "parameters": [
+            {
+              "name": "query",
+              "title": "Query",
+              "description": "Search string"
+            }
+          ]
+        }
+      ]
+    } 
+  ],
+  "permissions": [
+    "messageTeamMembers"
+  ],
+  "validDomains": [
+    "trello.com",
+    "*.trello.com"
+  ]
+}

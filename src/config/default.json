@@ -1,0 +1,15 @@
+{
+    "app": {
+        "baseUri": "https://trelloteamsapp.azurewebsites.net",
+        "instrumentationKey": ""
+    },
+    "bot": {
+        "appId": "58ef13de-4707-4a63-8a65-89be4e303759",
+        "appPassword": "<secret>"
+    },
+    "channelStorage": "mongoDb",
+    "mongoDb": {
+        "connectionString": "",
+        "botStateCollection": "BotState-Test"
+    }
+}

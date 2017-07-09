@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+  <body>
+    <script src="https://statics.teams.microsoft.com/sdk/v0.5/js/MicrosoftTeams.min.js"></script>
+
+    <script type="text/javascript">
+      microsoftTeams.initialize();
+
+      // Parse query parameters
+      let queryParams = {};
+      location.search.substr(1).split("&").forEach(function(item) {
+          let s = item.split("="),
+              k = s[0],
+              v = s[1] && decodeURIComponent(s[1]);
+          queryParams[k] = v;
+      });
+
+      // Navigate to Trello page with iframeSource=msteams
+      // navigateCrossDomain validates that the destination is in the validDomains list specified in the manifest
+      // https://msdn.microsoft.com/en-us/microsoft-teams/crossdomain
+      let contentUrl = queryParams["contentUrl"];
+      if (contentUrl.indexOf("?") >= 0) {
+        contentUrl += "&iframeSource=msteams";
+      } else {
+        contentUrl += "?iframeSource=msteams";
+      }
+
+      microsoftTeams.navigateCrossDomain(contentUrl);
+    </script>
+  </body>
+</html>

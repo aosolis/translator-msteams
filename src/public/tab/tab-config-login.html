@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+  <body>
+    <script src="https://code.jquery.com/jquery-3.1.1.js"></script>
+    <script src="https://api.trello.com/1/client.js?key=80829e2253ed135452eac9e91b9c2684"></script>
+    <script src="https://statics.teams.microsoft.com/sdk/v0.5/js/MicrosoftTeams.min.js"></script>
+
+    <script type="text/javascript">
+      microsoftTeams.initialize();
+
+      // See if we have a token parameter
+      var hashes = window.location.hash.slice(1).split('&')
+      for(var i = 0; i < hashes.length; i++) {
+        var hash = hashes[i].split('=');
+        if (hash[0] === "token") {
+          Trello.authorize({
+            type: "redirect",
+            persist: true,
+            interactive: false,
+            success: function () {
+              microsoftTeams.authentication.notifySuccess();
+            },
+            error: function () {
+              microsoftTeams.authentication.notifyFailure();
+            }
+          });
+        } else {
+          Trello.authorize({
+            type: "redirect",
+            name: "Trello for Microsoft Teams",
+            persist: true,
+            interactive: true,
+            scope: { read: true, write: true },
+            expiration: "never"
+          });
+        }
+      }
+    </script>
+  </body>
+</html>
