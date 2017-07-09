@@ -74,7 +74,7 @@ const defaultLanguages: string[] = [
     "es",
     "fr",
     "it",
-    "fr",
+    "ar",
 ];
 
 export interface TranslationResult {

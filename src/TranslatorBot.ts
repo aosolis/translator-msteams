@@ -56,7 +56,9 @@ export class TranslatorBot extends builder.UniversalBot {
                 try {
                     let translations = await this.translator.translateText(text, this.translator.getDefaultLanguages());
                     let response = msteams.ComposeExtensionResponse.result("list")
-                        .attachments(translations.map(translation => this.createResult(session, translation)));
+                        .attachments(translations
+                            .filter(translation => translation.from !== translation.to)
+                            .map(translation => this.createResult(session, translation)));
                     cb(null, response.toResponse());
                 } catch (e) {
                     cb(null, this.createMessageResponse("Oops, there was a problem translating the text you entered."));
