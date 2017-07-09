@@ -9,6 +9,74 @@ import * as xml2js from "xml2js";
 // Access tokens last 10 minutes, but refresh every 9 minutes to be safe
 const accessTokenLifetimeMs = 9 * 60 * 1000;
 
+// Supported languages
+const supportedLanguages: string[] = [
+    "af",
+    "ar",
+    "bn",
+    "bs-Latn",
+    "bg",
+    "ca",
+    "zh-CHS",
+    "zh-CHT",
+    "hr",
+    "cs",
+    "da",
+    "nl",
+    "en",
+    "et",
+    "fj",
+    "fil",
+    "fi",
+    "fr",
+    "de",
+    "el",
+    "ht",
+    "he",
+    "hi",
+    "hu",
+    "id",
+    "it",
+    "ja",
+    "sw",
+    "ko",
+    "lv",
+    "lt",
+    "mg",
+    "ms",
+    "mt",
+    "no",
+    "fa",
+    "pl",
+    "pt",
+    "ro",
+    "ru",
+    "sm",
+    "sr-Cyrl",
+    "sr-Latn",
+    "sk",
+    "sl",
+    "es",
+    "sv",
+    "ty",
+    "th",
+    "to",
+    "tr",
+    "uk",
+    "ur",
+    "vi",
+    "cy",
+];
+
+// Default languages
+const defaultLanguages: string[] = [
+    "en",
+    "es",
+    "fr",
+    "it",
+    "fr",
+];
+
 export interface TranslationResult {
     from?: string;
     text: string;
@@ -27,7 +95,29 @@ export class TranslatorApi {
     {
     }
 
-    public async translateText(text: string, to: string, from?: string): Promise<TranslationResult> {
+    // Translate text to the specified language
+    public async translateText(text: string, to: string|string[], from?: string): Promise<TranslationResult[]> {
+        if (!Array.isArray(to)) {
+            to = [ to ];
+        }
+
+        return Promise.all(to.map((toLang) => {
+            return this.translateTextWorker(text, toLang, from);
+        }));
+    }
+
+    // Return supported languages
+    public getSupportedLanguages(): string[] {
+        return supportedLanguages.slice();
+    }
+
+    // Return default languages
+    public getDefaultLanguages(): string[] {
+        return defaultLanguages.slice();
+    }
+
+    // Translate text to the specified language
+    private async translateTextWorker(text: string, to: string, from?: string): Promise<TranslationResult> {
         // Escape parameters
         let escapedText = text ? _.escape(text) : "";
         let escapedTo = to ? _.escape(to) : "en";

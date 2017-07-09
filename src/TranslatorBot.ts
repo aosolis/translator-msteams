@@ -1,6 +1,6 @@
 import * as builder from "botbuilder";
 import * as msteams from "botbuilder-teams";
-import { TranslatorApi } from "./TranslatorApi";
+import { TranslatorApi, TranslationResult } from "./TranslatorApi";
 
 // =========================================================
 // Bot Setup
@@ -43,7 +43,7 @@ export class TranslatorBot extends builder.UniversalBot {
         // Register default dialog
         this.dialog("/", async (session) => {
             let result = await this.translator.translateText(session.message.text, "it");
-            session.endDialog(result.translatedText);
+            session.endDialog(result[0].translatedText);
         });
     }
 
@@ -54,11 +54,9 @@ export class TranslatorBot extends builder.UniversalBot {
             let text = (query.parameters[0].name === "text") ? query.parameters[0].value : "";
             if (text) {
                 try {
-                    let translation = await this.translator.translateText(text, "it");
+                    let translations = await this.translator.translateText(text, this.translator.getDefaultLanguages());
                     let response = msteams.ComposeExtensionResponse.result("list")
-                        .attachments([
-                            new builder.ThumbnailCard().title(translation.translatedText).toAttachment(),
-                        ]);
+                        .attachments(translations.map(translation => this.createResult(session, translation)));
                     cb(null, response.toResponse());
                 } catch (e) {
                     cb(null, this.createMessageResponse("Oops, there was a problem translating the text you entered."));
@@ -75,5 +73,17 @@ export class TranslatorBot extends builder.UniversalBot {
         let response = new msteams.ComposeExtensionResponse("message");
         (response as any).data.text = text;
         return response.toResponse();
+    }
+
+    private createResult(session: builder.Session, translation: TranslationResult): msteams.ComposeExtensionAttachment {
+        let card: msteams.ComposeExtensionAttachment = new builder.ThumbnailCard()
+            .title(translation.translatedText)
+            .text(translation.text)
+            .toAttachment();
+        card.preview = new builder.ThumbnailCard()
+            .title(translation.translatedText)
+            .text(session.gettext(translation.to))
+            .toAttachment();
+        return card;
     }
 }

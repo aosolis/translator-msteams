@@ -57,7 +57,7 @@ gulp.task('locale:generate', function() {
         'export const Strings = {\n';
         for (var p in data) {
             if( data.hasOwnProperty(p) ) {
-                result += '   ' + p + ': "'+ p + '",\n';
+                result += '   "' + p + '": "'+ p + '",\n';
             }
         }
         result += '};\n';
