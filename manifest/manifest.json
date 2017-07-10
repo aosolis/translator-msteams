@@ -55,6 +55,6 @@
   "permissions": [
   ],
   "validDomains": [
-    "*.ngrok.com"
+    "*.ngrok.io"
   ]
 }
