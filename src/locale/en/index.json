@@ -2,6 +2,7 @@
     "error_generic": "Sorry, I'm having issues.",
     "error_translation": "Oops, there was a problem translating the text you entered.",
     "error_notext": "Enter text to translate.",
+    "configure_text": "Configure Translator",
     "af": "Afrikaans",
     "ar": "Arabic",
     "bn": "Bengali",
@@ -54,7 +55,7 @@
     "to": "Tonga",
     "tr": "Turkish",
     "uk": "Ukranian",
-    "ur": "Rudu",
+    "ur": "Urdu",
     "vi": "Vietnamese",
     "cy": "Welsh"
 }

@@ -1,3 +1,4 @@
+import * as config from "config";
 import * as builder from "botbuilder";
 import * as msteams from "botbuilder-teams";
 import { TranslatorApi, TranslationResult } from "./TranslatorApi";
@@ -53,9 +54,26 @@ export class TranslatorBot extends builder.UniversalBot {
         let session = await this.loadSessionAsync(event.address);
         if (session) {
             let text = (query.parameters[0].name === "text") ? query.parameters[0].value : "";
-            if (text) {
+
+            // Handle setting state
+            let incomingSettings = (query as any).state;
+            if (incomingSettings) {
+                this.updateSettings(session, incomingSettings);
+                text = "";
+            }
+
+            let translationLanguages = this.getTranslationLanguages(session);
+
+            if (text === "settings") {
+                let baseUri = config.get("app.baseUri");
+                let languages = translationLanguages.join(",");
+                let response = msteams.ComposeExtensionResponse.config().actions([
+                    builder.CardAction.openUrl(session, `${baseUri}/html/compose-config.html?languages=${languages}`, Strings.configure_text),
+                ]);
+                cb(null, response.toResponse());
+            } else if (text) {
                 try {
-                    let translations = await this.translator.translateText(text, this.translator.getDefaultLanguages());
+                    let translations = await this.translator.translateText(text, translationLanguages);
                     let response = msteams.ComposeExtensionResponse.result("list")
                         .attachments(translations
                             .filter(translation => translation.from !== translation.to)
@@ -88,5 +106,24 @@ export class TranslatorBot extends builder.UniversalBot {
             .text(session.gettext(translation.to))
             .toAttachment();
         return card;
+    }
+
+    private updateSettings(session: builder.Session, state: string): void {
+        // State is a comma-separated list of languages
+        state = state || "";
+
+        let supportedLangs = this.translator.getSupportedLanguages();
+        let langs = state.split(",")
+            .filter(lang => supportedLangs.find(i => i === lang));
+        if (langs.length === 0) {
+            langs = this.translator.getDefaultLanguages();
+        }
+
+        session.userData.languages = langs;
+        session.sendBatch();
+    }
+
+    private getTranslationLanguages(session: builder.Session): string[] {
+        return session.userData.languages || this.translator.getDefaultLanguages();
     }
 }
