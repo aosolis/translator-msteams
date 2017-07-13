@@ -18,10 +18,10 @@
     "full": "Cloud based automatic translation service."
   },
   "icons": {
-    "outline": "trello_outline20.png",
-    "color": "trello_color96.png"
+    "outline": "translator_outline20.png",
+    "color": "translator_color96.png"
   },
-  "accentColor": "#0079bf",
+  "accentColor": "#467b22",
   "configurableTabs": [
   ],
   "staticTabs": [
