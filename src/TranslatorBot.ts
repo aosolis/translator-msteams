@@ -41,6 +41,7 @@ export class TranslatorBot extends builder.UniversalBot {
         if (teamsConnector.onQuery) {
             teamsConnector.onQuery("translate", (event, query, cb) => { this.onComposeExtensionQuery(event, query, cb); });
         }
+        teamsConnector.onInvoke((event, cb) => { this.onInvoke(event, cb); });
 
         // Register default dialog
         this.dialog("/", async (session) => {
@@ -64,13 +65,9 @@ export class TranslatorBot extends builder.UniversalBot {
 
             let translationLanguages = this.getTranslationLanguages(session);
 
-            if (text === "settings") {
-                let baseUri = config.get("app.baseUri");
-                let languages = translationLanguages.join(",");
-                let response = msteams.ComposeExtensionResponse.config().actions([
-                    builder.CardAction.openUrl(session, `${baseUri}/html/compose-config.html?languages=${languages}`, Strings.configure_text),
-                ]);
-                cb(null, response.toResponse());
+            if ((text === "settings") && config.get("features.allowConfigurationViaQuery")) {
+                // Provide a way to get to settings for client versions that don't support canUpdateConfiguration
+                cb(null, this.getConfigurationResponse(session, translationLanguages));
             } else if (text) {
                 try {
                     let translations = await this.translator.translateText(text, translationLanguages);
@@ -88,6 +85,45 @@ export class TranslatorBot extends builder.UniversalBot {
         } else {
             cb(new Error(), null, 500);
         }
+    }
+
+    // Handle other invokes
+    private async onInvoke(event: builder.IEvent, cb: (err: Error, result: msteams.IComposeExtensionResponse, statusCode?: number) => void): Promise<void> {
+        let session = await this.loadSessionAsync(event.address);
+        if (session) {
+            let eventName = (event as any).name;
+            let eventValue = (event as any).value;
+
+            switch (eventName) {
+                case "composeExtension/querySettingUrl":
+                    cb(null, this.getConfigurationResponse(session));
+                    break;
+
+                case "composeExtension/setting":
+                    // Handle setting state
+                    let incomingSettings = (eventValue as any).state;
+                    if (incomingSettings) {
+                        this.updateSettings(session, incomingSettings);
+                    }
+                    break;
+
+                default:
+                    cb(new Error("Unrecognized event name: " + eventName), null, 500);
+                    break;
+            }
+        } else {
+            cb(new Error(), null, 500);
+        }
+    }
+
+    private getConfigurationResponse(session: builder.Session, translationLanguages?: string[]): msteams.IComposeExtensionResponse {
+        translationLanguages = translationLanguages || this.getTranslationLanguages(session);
+        let baseUri = config.get("app.baseUri");
+        let languages = translationLanguages.join(",");
+        let response = msteams.ComposeExtensionResponse.config().actions([
+            builder.CardAction.openUrl(session, `${baseUri}/html/compose-config.html?languages=${languages}`, Strings.configure_text),
+        ]);
+        return response.toResponse();
     }
 
     private createMessageResponse(session: builder.Session, text: string): msteams.IComposeExtensionResponse {

@@ -14,5 +14,8 @@
     "mongoDb": {
         "connectionString": "",
         "botStateCollection": "BotState-Test"
+    },
+    "features": {
+        "allowConfigurationViaQuery": true
     }
 }

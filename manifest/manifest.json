@@ -14,8 +14,8 @@
     "short": "Translator"
   },
   "description": {
-    "short": "Microsoft Translator is a cloud based automatic translation service.",
-    "full": "Microsoft Translator is a cloud based automatic translation service."
+    "short": "Cloud based automatic translation service.",
+    "full": "Cloud based automatic translation service."
   },
   "icons": {
     "outline": "trello_outline20.png",
@@ -35,6 +35,7 @@
         "personal",
         "team"
       ],
+      "canUpdateConfiguration": true,
       "commands": [
         {
           "id": "translate",
