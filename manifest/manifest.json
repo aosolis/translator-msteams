@@ -2,7 +2,7 @@
   "$schema": "https://statics.teams.microsoft.com/sdk/v1.0/manifest/MicrosoftTeams.schema.json",
   "manifestVersion": "1.0",
   "version": "1.0",
-  "id": "AADD1E75-C0EB-49E5-AAE5-A48805A7911F",
+  "id": "84c4a338-e5a0-4ade-b855-1f53a6d9b95d",
   "packageName": "com.microsoft.translator.teams",
   "developer": {
     "name": "Microsoft",
@@ -30,7 +30,7 @@
   ],
   "composeExtensions": [
     {
-      "botId": "aadd1e75-c0eb-49e5-aae5-a48805a7911f",
+      "botId": "84c4a338-e5a0-4ade-b855-1f53a6d9b95d",
       "scopes": [
         "personal",
         "team"
@@ -56,6 +56,6 @@
   "permissions": [
   ],
   "validDomains": [
-    "*.ngrok.io"
+    "translator-msteams.azurewebsites.net"
   ]
 }
