@@ -75,6 +75,7 @@ app.use((req: Request, res: Response, next: Function) => {
 // will print stacktrace
 if (app.get("env") === "development") {
     app.use(function(err: any, req: Request, res: Response, next: Function): void {
+        winston.error("Failed request", err);
         res.status(err.status || 500);
         res.render("error", {
             message: err.message,
@@ -86,6 +87,7 @@ if (app.get("env") === "development") {
 // production error handler
 // no stacktraces leaked to user
 app.use(function(err: any, req: Request, res: Response, next: Function): void {
+        winston.error("Failed request", err);
     res.status(err.status || 500);
     res.render("error", {
         message: err.message,

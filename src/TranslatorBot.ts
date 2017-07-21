@@ -1,6 +1,7 @@
 import * as config from "config";
 import * as builder from "botbuilder";
 import * as msteams from "botbuilder-teams";
+import * as winston from "winston";
 import { TranslatorApi, TranslationResult } from "./TranslatorApi";
 import { Strings } from "./locale/locale";
 
@@ -28,7 +29,11 @@ export class TranslatorBot extends builder.UniversalBot {
             return new Promise((resolve, reject) => {
                 this.loadSession(address, (err: any, session: builder.Session) => {
                     if (err) {
+                        winston.error("Failed to load session", { error: err, address: address });
                         reject(err);
+                    } else if (!session) {
+                        winston.error("Loaded null session", { address: address });
+                        reject(new Error("Failed to load session"));
                     } else {
                         resolve(session);
                     }
@@ -39,7 +44,13 @@ export class TranslatorBot extends builder.UniversalBot {
         // Handle compose extension invokes
         let teamsConnector = this._connector as msteams.TeamsChatConnector;
         if (teamsConnector.onQuery) {
-            teamsConnector.onQuery("translate", (event, query, cb) => { this.onComposeExtensionQuery(event, query, cb); });
+            teamsConnector.onQuery("translate", (event, query, cb) => {
+                this.handleTranslateQuery(event, query, cb)
+                    .catch(e => {
+                        winston.error("Translate invoke handler failed", e);
+                        cb(e, null, 500);
+                    });
+            });
         }
         teamsConnector.onInvoke((event, cb) => { this.onInvoke(event, cb); });
 
@@ -51,39 +62,37 @@ export class TranslatorBot extends builder.UniversalBot {
     }
 
     // Handle compose extension query invocation
-    private async onComposeExtensionQuery(event: builder.IEvent, query: msteams.ComposeExtensionQuery, cb: (err: Error, result: msteams.IComposeExtensionResponse, statusCode?: number) => void): Promise<void> {
+    private async handleTranslateQuery(event: builder.IEvent, query: msteams.ComposeExtensionQuery, cb: (err: Error, result: msteams.IComposeExtensionResponse, statusCode?: number) => void): Promise<void> {
         let session = await this.loadSessionAsync(event.address);
-        if (session) {
-            let text = (query.parameters[0].name === "text") ? query.parameters[0].value : "";
 
-            // Handle setting state
-            let incomingSettings = (query as any).state;
-            if (incomingSettings) {
-                this.updateSettings(session, incomingSettings);
-                text = "";
-            }
+        let text = (query.parameters[0].name === "text") ? query.parameters[0].value : "";
 
-            let translationLanguages = this.getTranslationLanguages(session);
+        // Handle setting state
+        let incomingSettings = (query as any).state;
+        if (incomingSettings) {
+            this.updateSettings(session, incomingSettings);
+            text = "";
+        }
 
-            if ((text === "settings") && config.get("features.allowConfigurationViaQuery")) {
-                // Provide a way to get to settings for client versions that don't support canUpdateConfiguration
-                cb(null, this.getConfigurationResponse(session, translationLanguages));
-            } else if (text) {
-                try {
-                    let translations = await this.translator.translateText(text, translationLanguages);
-                    let response = msteams.ComposeExtensionResponse.result("list")
-                        .attachments(translations
-                            .filter(translation => translation.from !== translation.to)
-                            .map(translation => this.createResult(session, translation)));
-                    cb(null, response.toResponse());
-                } catch (e) {
-                    cb(null, this.createMessageResponse(session, Strings.error_translation));
-                }
-            } else {
-                cb(null, this.createMessageResponse(session, Strings.error_notext));
+        let translationLanguages = this.getTranslationLanguages(session);
+
+        if ((text === "settings") && config.get("features.allowConfigurationViaQuery")) {
+            // Provide a way to get to settings for client versions that don't support canUpdateConfiguration
+            cb(null, this.getConfigurationResponse(session, translationLanguages));
+        } else if (text) {
+            try {
+                let translations = await this.translator.translateText(text, translationLanguages);
+                let response = msteams.ComposeExtensionResponse.result("list")
+                    .attachments(translations
+                        .filter(translation => translation.from !== translation.to)
+                        .map(translation => this.createResult(session, translation)));
+                cb(null, response.toResponse());
+            } catch (e) {
+                winston.error("Failed to get translations", e);
+                cb(null, this.createMessageResponse(session, Strings.error_translation));
             }
         } else {
-            cb(new Error(), null, 500);
+            cb(null, this.createMessageResponse(session, Strings.error_notext));
         }
     }
 
@@ -108,7 +117,9 @@ export class TranslatorBot extends builder.UniversalBot {
                     break;
 
                 default:
-                    cb(new Error("Unrecognized event name: " + eventName), null, 500);
+                    let unrecognizedEvent = `Unrecognized event name: ${eventName}`;
+                    winston.error(unrecognizedEvent);
+                    cb(new Error(unrecognizedEvent), null, 500);
                     break;
             }
         } else {
