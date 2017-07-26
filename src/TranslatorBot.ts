@@ -44,14 +44,37 @@ export class TranslatorBot extends builder.UniversalBot {
         // Handle compose extension invokes
         let teamsConnector = this._connector as msteams.TeamsChatConnector;
         if (teamsConnector.onQuery) {
-            teamsConnector.onQuery("translate", (event, query, cb) => {
-                this.handleTranslateQuery(event, query, cb)
-                    .catch(e => {
-                        winston.error("Translate invoke handler failed", e);
-                        cb(e, null, 500);
-                    });
+            teamsConnector.onQuery("translate", async (event, query, cb) => {
+                try {
+                    await this.handleTranslateQuery(event, query, cb);
+                } catch (e) {
+                    winston.error("Translate handler failed", e);
+                    cb(e, null, 500);
+                }
             });
         }
+        if (teamsConnector.onQuerySettingsUrl) {
+            teamsConnector.onQuerySettingsUrl(async (event, query, cb) => {
+                try {
+                    await this.handleQuerySettingsUrl(event, query, cb);
+                } catch (e) {
+                    winston.error("Query settings url handler failed", e);
+                    cb(e, null, 500);
+                }
+            });
+        }
+        if (teamsConnector.onSettingsUpdate) {
+            teamsConnector.onSettingsUpdate(async (event, query, cb) => {
+                try {
+                    await this.handleSettingsUpdate(event, query, cb);
+                } catch (e) {
+                    winston.error("Settings update handler failed", e);
+                    cb(e, null, 500);
+                }
+            });
+        }
+
+        // Handle generic invokes
         teamsConnector.onInvoke((event, cb) => { this.onInvoke(event, cb); });
 
         // Register default dialog
@@ -68,7 +91,7 @@ export class TranslatorBot extends builder.UniversalBot {
         let text = (query.parameters[0].name === "text") ? query.parameters[0].value : "";
 
         // Handle setting state
-        let incomingSettings = (query as any).state;
+        let incomingSettings = query.state;
         if (incomingSettings) {
             this.updateSettings(session, incomingSettings);
             text = "";
@@ -96,26 +119,30 @@ export class TranslatorBot extends builder.UniversalBot {
         }
     }
 
+    // Handle compose extension query settings url
+    private async handleQuerySettingsUrl(event: builder.IEvent, query: msteams.ComposeExtensionQuery, cb: (err: Error, result: msteams.IComposeExtensionResponse, statusCode?: number) => void): Promise<void> {
+        let session = await this.loadSessionAsync(event.address);
+        cb(null, this.getConfigurationResponse(session));
+    }
+
+    // Handle compose extension query settings url
+    private async handleSettingsUpdate(event: builder.IEvent, query: msteams.ComposeExtensionQuery, cb: (err: Error, result: msteams.IComposeExtensionResponse, statusCode?: number) => void): Promise<void> {
+        let session = await this.loadSessionAsync(event.address);
+        let incomingSettings = query.state;
+        if (incomingSettings) {
+            this.updateSettings(session, incomingSettings);
+        }
+    }
+
     // Handle other invokes
     private async onInvoke(event: builder.IEvent, cb: (err: Error, result: msteams.IComposeExtensionResponse, statusCode?: number) => void): Promise<void> {
         let session = await this.loadSessionAsync(event.address);
         if (session) {
-            let eventName = (event as any).name;
-            let eventValue = (event as any).value;
+            let invokeEvent = event as msteams.IInvokeEvent;
+            let eventName = invokeEvent.name;
+            // let eventValue = invokeEvent.value;
 
             switch (eventName) {
-                case "composeExtension/querySettingUrl":
-                    cb(null, this.getConfigurationResponse(session));
-                    break;
-
-                case "composeExtension/setting":
-                    // Handle setting state
-                    let incomingSettings = (eventValue as any).state;
-                    if (incomingSettings) {
-                        this.updateSettings(session, incomingSettings);
-                    }
-                    break;
-
                 default:
                     let unrecognizedEvent = `Unrecognized event name: ${eventName}`;
                     winston.error(unrecognizedEvent);
