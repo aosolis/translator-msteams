@@ -115,7 +115,7 @@ export class TranslatorBot extends builder.UniversalBot {
                 let response = msteams.ComposeExtensionResponse.result("list")
                     .attachments(translations
                         .filter(translation => translation.from !== translation.to)
-                        .map(translation => this.createResult(session, translation)));
+                        .map(translation => this.createComposeExtensionResult(session, translation)));
                 cb(null, response.toResponse());
             } catch (e) {
                 winston.error("Failed to get translations", e);
@@ -145,22 +145,12 @@ export class TranslatorBot extends builder.UniversalBot {
     }
 
     // Handle compose extension item selected
-    private async handleItemSelected(event: builder.IEvent, query: msteams.ComposeExtensionQuery, cb: (err: Error, result: msteams.IComposeExtensionResponse, statusCode?: number) => void): Promise<void> {
+    private async handleSelectItem(event: builder.IEvent, query: msteams.ComposeExtensionQuery, cb: (err: Error, result: msteams.IComposeExtensionResponse, statusCode?: number) => void): Promise<void> {
         let invokeEvent = event as msteams.IInvokeEvent;
         let translation = JSON.parse(invokeEvent.value.tapInvokeValue) as TranslationResult;
-        let cardText =
-            `<div>${translation.translatedText}</div>
-             <div>${translation.text}</div>`;
         cb(null, msteams.ComposeExtensionResponse.result("list")
-            .attachments([{
-                ...new builder.ThumbnailCard()
-                    .text(cardText)
-                    .toAttachment(),
-                preview: new builder.ThumbnailCard()
-                    .title(" ")
-                    .text(" ")
-                    .toAttachment(),
-            }]).toResponse());
+            .attachments([this.createTranslationCard(translation)])
+            .toResponse());
     }
 
     // Handle other invokes
@@ -169,8 +159,8 @@ export class TranslatorBot extends builder.UniversalBot {
         let eventName = invokeEvent.name;
 
         switch (eventName) {
-            case "composeExtension/itemSelected":
-                await this.handleItemSelected(event, null, (err, result, statusCode) => {
+            case "composeExtension/selectItem":
+                await this.handleSelectItem(event, null, (err, result, statusCode) => {
                     cb(err, result, statusCode);
                 });
                 break;
@@ -202,22 +192,26 @@ export class TranslatorBot extends builder.UniversalBot {
     }
 
     // Creates a compose extension result from a translation
-    private createResult(session: builder.Session, translation: TranslationResult): msteams.ComposeExtensionAttachment {
-        let cardText =
-            `<div>${translation.translatedText}</div>
-             <div>${translation.text}</div>`;
-        let card: msteams.ComposeExtensionAttachment = new builder.ThumbnailCard()
-            .text(cardText)
-            .toAttachment();
+    private createComposeExtensionResult(session: builder.Session, translation: TranslationResult): msteams.ComposeExtensionAttachment {
+        let card: msteams.ComposeExtensionAttachment = this.createTranslationCard(translation);
         card.preview = new builder.ThumbnailCard()
             .title(translation.translatedText)
             .text(session.gettext(translation.to))
             .tap(new builder.CardAction(session)
                 .type("invoke")
-                .title("")
                 .value(JSON.stringify(translation)))
             .toAttachment();
         return card;
+    }
+
+    // Create the translation card that will be dropped into the conversation
+    private createTranslationCard(translation: TranslationResult): builder.IAttachment {
+        let cardText =
+            `<div>${translation.translatedText}</div>
+             <div>${translation.text}</div>`;
+        return new builder.HeroCard()
+            .text(cardText)
+            .toAttachment();
     }
 
     // Updates Translator settings
