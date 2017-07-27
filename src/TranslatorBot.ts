@@ -9,6 +9,8 @@ import { Strings } from "./locale/locale";
 // Bot Setup
 // =========================================================
 
+const maxTranslationHistory = 5;
+
 export class TranslatorBot extends builder.UniversalBot {
 
     private loadSessionAsync: {(address: builder.IAddress): Promise<builder.Session>};
@@ -95,7 +97,8 @@ export class TranslatorBot extends builder.UniversalBot {
     private async handleTranslateQuery(event: builder.IEvent, query: msteams.ComposeExtensionQuery, cb: (err: Error, result: msteams.IComposeExtensionResponse, statusCode?: number) => void): Promise<void> {
         let session = await this.loadSessionAsync(event.address);
 
-        let text = (query.parameters[0].name === "text") ? query.parameters[0].value : "";
+        let text = this.getQueryParameter(query, "text");
+        let initialRun = !!this.getQueryParameter(query, "initialRun");
 
         // Handle settings coming in part of a query
         let incomingSettings = query.state;
@@ -115,11 +118,22 @@ export class TranslatorBot extends builder.UniversalBot {
                 let response = msteams.ComposeExtensionResponse.result("list")
                     .attachments(translations
                         .filter(translation => translation.from !== translation.to)
-                        .map(translation => this.createComposeExtensionResult(session, translation)));
+                        .map(translation => this.createTranslationResult(session, translation)));
                 cb(null, response.toResponse());
             } catch (e) {
                 winston.error("Failed to get translations", e);
                 cb(null, this.createMessageResponse(session, Strings.error_translation));
+            }
+        } else if (initialRun) {
+            let translationHistory = session.userData.translationHistory || [];
+            if (translationHistory.length) {
+                let response = msteams.ComposeExtensionResponse.result("list")
+                    .attachments(translationHistory
+                        .filter(translation => translation.from !== translation.to)
+                        .map(translation => this.createTranslationHistoryResult(session, translation)));
+                cb(null, response.toResponse());
+            } else {
+                cb(null, this.createMessageResponse(session, Strings.error_notext));
             }
         } else {
             cb(null, this.createMessageResponse(session, Strings.error_notext));
@@ -146,10 +160,34 @@ export class TranslatorBot extends builder.UniversalBot {
 
     // Handle compose extension item selected
     private async handleSelectItem(event: builder.IEvent, query: msteams.ComposeExtensionQuery, cb: (err: Error, result: msteams.IComposeExtensionResponse, statusCode?: number) => void): Promise<void> {
+        let session = await this.loadSessionAsync(event.address);
+
         let invokeEvent = event as msteams.IInvokeEvent;
-        let translation = JSON.parse(invokeEvent.value.tapInvokeValue) as TranslationResult;
+        let translation = invokeEvent.value as TranslationResult;
+
+        // Store last few translations
+        let translationHistory: TranslationResult[] = session.userData.translationHistory || [];
+        let existingItemIndex = translationHistory.findIndex(val =>
+            (val.text.toLocaleUpperCase() === translation.text.toLocaleUpperCase()) &&
+            (val.translatedText.toLocaleUpperCase() === translation.translatedText.toLocaleUpperCase()));
+        if (existingItemIndex >= 0) {
+            translationHistory.splice(existingItemIndex, 1);
+        }
+        translationHistory.unshift(translation);
+        if (translationHistory.length > maxTranslationHistory) {
+            translationHistory = translationHistory.slice(0, maxTranslationHistory);
+        }
+        session.userData.translationHistory = translationHistory;
+        session.save().sendBatch();
+
         cb(null, msteams.ComposeExtensionResponse.result("list")
-            .attachments([this.createTranslationCard(translation)])
+            .attachments([{
+                ...this.createTranslationCard(session, translation),
+                preview: new builder.ThumbnailCard()
+                    .title(" ")
+                    .text(" ")
+                    .toAttachment(),
+            }])
             .toResponse());
     }
 
@@ -192,8 +230,8 @@ export class TranslatorBot extends builder.UniversalBot {
     }
 
     // Creates a compose extension result from a translation
-    private createComposeExtensionResult(session: builder.Session, translation: TranslationResult): msteams.ComposeExtensionAttachment {
-        let card: msteams.ComposeExtensionAttachment = this.createTranslationCard(translation);
+    private createTranslationResult(session: builder.Session, translation: TranslationResult): msteams.ComposeExtensionAttachment {
+        let card: msteams.ComposeExtensionAttachment = this.createTranslationCard(session, translation);
         card.preview = new builder.ThumbnailCard()
             .title(translation.translatedText)
             .text(session.gettext(translation.to))
@@ -204,12 +242,27 @@ export class TranslatorBot extends builder.UniversalBot {
         return card;
     }
 
+    // Creates a compose extension result from a translation history item
+    private createTranslationHistoryResult(session: builder.Session, translation: TranslationResult): msteams.ComposeExtensionAttachment {
+        let card: msteams.ComposeExtensionAttachment = this.createTranslationCard(session, translation);
+        card.preview = new builder.ThumbnailCard()
+            .title(translation.translatedText)
+            .text(translation.text)
+            .tap(new builder.CardAction(session)
+                .type("invoke")
+                .value(JSON.stringify(translation)))
+            .toAttachment();
+        return card;
+    }
+
     // Create the translation card that will be dropped into the conversation
-    private createTranslationCard(translation: TranslationResult): builder.IAttachment {
+    private createTranslationCard(session: builder.Session, translation: TranslationResult): builder.IAttachment {
+        let fromLanguage = session.gettext(translation.from);
+        let originalLabel = session.gettext(Strings.original_label, fromLanguage);
         let cardText =
-            `<div>${translation.translatedText}</div>
-             <div>${translation.text}</div>`;
-        return new builder.HeroCard()
+            `<div style="font-size:1.6rem;font-weight:600;">${translation.translatedText}</div>
+             <div style="margin-top:1.4rem;"><span style="text-decoration:underline;">${originalLabel}</span><br/>${translation.text}</div>`;
+        return new builder.ThumbnailCard()
             .text(cardText)
             .toAttachment();
     }
@@ -233,5 +286,11 @@ export class TranslatorBot extends builder.UniversalBot {
     // Gets the languages we should translate into
     private getTranslationLanguages(session: builder.Session): string[] {
         return session.userData.languages || this.translator.getDefaultLanguages();
+    }
+
+    // Returns the value of the specified query parameter
+    private getQueryParameter(query: msteams.ComposeExtensionQuery, name: string): string {
+        let matchingParams = (query.parameters || []).filter(p => p.name === name);
+        return matchingParams.length ? matchingParams[0].value : "";
     }
 }

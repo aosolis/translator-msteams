@@ -9,6 +9,7 @@ export const Strings = {
    "error_translation": "error_translation",
    "error_notext": "error_notext",
    "configure_text": "configure_text",
+   "original_label": "original_label",
    "af": "af",
    "ar": "ar",
    "bn": "bn",
