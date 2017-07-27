@@ -90,7 +90,7 @@ export class TranslatorBot extends builder.UniversalBot {
 
         let text = (query.parameters[0].name === "text") ? query.parameters[0].value : "";
 
-        // Handle setting state
+        // Handle settings coming in part of a query
         let incomingSettings = query.state;
         if (incomingSettings) {
             this.updateSettings(session, incomingSettings);
@@ -101,7 +101,7 @@ export class TranslatorBot extends builder.UniversalBot {
 
         if ((text === "settings") && config.get("features.allowConfigurationViaQuery")) {
             // Provide a way to get to settings for client versions that don't support canUpdateConfiguration
-            cb(null, this.getConfigurationResponse(session, translationLanguages));
+            cb(null, this.createConfigurationResponse(session, translationLanguages));
         } else if (text) {
             try {
                 let translations = await this.translator.translateText(text, translationLanguages);
@@ -122,7 +122,7 @@ export class TranslatorBot extends builder.UniversalBot {
     // Handle compose extension query settings url
     private async handleQuerySettingsUrl(event: builder.IEvent, query: msteams.ComposeExtensionQuery, cb: (err: Error, result: msteams.IComposeExtensionResponse, statusCode?: number) => void): Promise<void> {
         let session = await this.loadSessionAsync(event.address);
-        cb(null, this.getConfigurationResponse(session));
+        cb(null, this.createConfigurationResponse(session));
     }
 
     // Handle compose extension query settings url
@@ -132,29 +132,28 @@ export class TranslatorBot extends builder.UniversalBot {
         if (incomingSettings) {
             this.updateSettings(session, incomingSettings);
         }
+
+        // Return a response. MS Teams doesn't care what the response is, so just return an empty message. 
+        cb(null, msteams.ComposeExtensionResponse.message().text("").toResponse());
     }
 
     // Handle other invokes
-    private async onInvoke(event: builder.IEvent, cb: (err: Error, result: msteams.IComposeExtensionResponse, statusCode?: number) => void): Promise<void> {
-        let session = await this.loadSessionAsync(event.address);
-        if (session) {
-            let invokeEvent = event as msteams.IInvokeEvent;
-            let eventName = invokeEvent.name;
-            // let eventValue = invokeEvent.value;
+    private onInvoke(event: builder.IEvent, cb: (err: Error, result: msteams.IComposeExtensionResponse, statusCode?: number) => void): void {
+        let invokeEvent = event as msteams.IInvokeEvent;
+        let eventName = invokeEvent.name;
+        // let eventValue = invokeEvent.value;
 
-            switch (eventName) {
-                default:
-                    let unrecognizedEvent = `Unrecognized event name: ${eventName}`;
-                    winston.error(unrecognizedEvent);
-                    cb(new Error(unrecognizedEvent), null, 500);
-                    break;
-            }
-        } else {
-            cb(new Error(), null, 500);
+        switch (eventName) {
+            default:
+                let unrecognizedEvent = `Unrecognized event name: ${eventName}`;
+                winston.error(unrecognizedEvent);
+                cb(new Error(unrecognizedEvent), null, 500);
+                break;
         }
     }
 
-    private getConfigurationResponse(session: builder.Session, translationLanguages?: string[]): msteams.IComposeExtensionResponse {
+    // Get compose extension response that lets the user configure Translator
+    private createConfigurationResponse(session: builder.Session, translationLanguages?: string[]): msteams.IComposeExtensionResponse {
         translationLanguages = translationLanguages || this.getTranslationLanguages(session);
         let baseUri = config.get("app.baseUri");
         let languages = translationLanguages.join(",");
@@ -164,12 +163,14 @@ export class TranslatorBot extends builder.UniversalBot {
         return response.toResponse();
     }
 
+    // Create compose extension response that shows a message
     private createMessageResponse(session: builder.Session, text: string): msteams.IComposeExtensionResponse {
-        let response = new msteams.ComposeExtensionResponse("message");
-        (response as any).data.composeExtension.text = session.gettext(text);
+        let response = msteams.ComposeExtensionResponse.message()
+            .text(session.gettext(text));
         return response.toResponse();
     }
 
+    // Creates a compose extension result from a translation
     private createResult(session: builder.Session, translation: TranslationResult): msteams.ComposeExtensionAttachment {
         let card: msteams.ComposeExtensionAttachment = new builder.ThumbnailCard()
             .title(translation.translatedText)
@@ -182,6 +183,7 @@ export class TranslatorBot extends builder.UniversalBot {
         return card;
     }
 
+    // Updates Translator settings
     private updateSettings(session: builder.Session, state: string): void {
         // State is a comma-separated list of languages
         state = state || "";
@@ -194,9 +196,10 @@ export class TranslatorBot extends builder.UniversalBot {
         }
 
         session.userData.languages = langs;
-        session.sendBatch();
+        session.save().sendBatch();
     }
 
+    // Gets the languages we should translate into
     private getTranslationLanguages(session: builder.Session): string[] {
         return session.userData.languages || this.translator.getDefaultLanguages();
     }
