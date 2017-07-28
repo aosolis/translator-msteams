@@ -86,7 +86,7 @@ export class TranslatorBot extends builder.UniversalBot {
             }
         });
 
-        // Register default dialog
+        // Register default dialog for testing
         this.dialog("/", async (session) => {
             let result = await this.translator.translateText(session.message.text, "it");
             session.endDialog(result[0].translatedText);
@@ -100,7 +100,7 @@ export class TranslatorBot extends builder.UniversalBot {
         let text = this.getQueryParameter(query, "text");
         let initialRun = !!this.getQueryParameter(query, "initialRun");
 
-        // Handle settings coming in part of a query
+        // Handle settings coming in part of a query, as happens when we return a configuration response
         let incomingSettings = query.state;
         if (incomingSettings) {
             this.updateSettings(session, incomingSettings);
@@ -110,9 +110,10 @@ export class TranslatorBot extends builder.UniversalBot {
         let translationLanguages = this.getTranslationLanguages(session);
 
         if ((text === "settings") && config.get("features.allowConfigurationViaQuery")) {
-            // Provide a way to get to settings for client versions that don't support canUpdateConfiguration
+            // Provide a way to get to settings for client versions that don't yet support canUpdateConfiguration
             cb(null, this.createConfigurationResponse(session, translationLanguages));
         } else if (text) {
+            // We got text, translate it
             try {
                 let translations = await this.translator.translateText(text, translationLanguages);
                 let response = msteams.ComposeExtensionResponse.result("list")
@@ -125,6 +126,7 @@ export class TranslatorBot extends builder.UniversalBot {
                 cb(null, this.createMessageResponse(session, Strings.error_translation));
             }
         } else if (initialRun) {
+            // Show the last few items in translation history, if present, otherwise instruction text
             let translationHistory = session.userData.translationHistory || [];
             if (translationHistory.length) {
                 let response = msteams.ComposeExtensionResponse.result("list")
@@ -136,17 +138,18 @@ export class TranslatorBot extends builder.UniversalBot {
                 cb(null, this.createMessageResponse(session, Strings.error_notext));
             }
         } else {
+            // Default to showing instruction text
             cb(null, this.createMessageResponse(session, Strings.error_notext));
         }
     }
 
-    // Handle compose extension query settings url
+    // Handle compose extension query settings url callback
     private async handleQuerySettingsUrl(event: builder.IEvent, query: msteams.ComposeExtensionQuery, cb: (err: Error, result: msteams.IComposeExtensionResponse, statusCode?: number) => void): Promise<void> {
         let session = await this.loadSessionAsync(event.address);
         cb(null, this.createConfigurationResponse(session));
     }
 
-    // Handle compose extension query settings url
+    // Handle compose extension settings update callback
     private async handleSettingsUpdate(event: builder.IEvent, query: msteams.ComposeExtensionQuery, cb: (err: Error, result: msteams.IComposeExtensionResponse, statusCode?: number) => void): Promise<void> {
         let session = await this.loadSessionAsync(event.address);
         let incomingSettings = query.state;
@@ -158,14 +161,14 @@ export class TranslatorBot extends builder.UniversalBot {
         cb(null, msteams.ComposeExtensionResponse.message().text("").toResponse());
     }
 
-    // Handle compose extension item selected
+    // Handle compose extension item selected callback
     private async handleSelectItem(event: builder.IEvent, query: msteams.ComposeExtensionQuery, cb: (err: Error, result: msteams.IComposeExtensionResponse, statusCode?: number) => void): Promise<void> {
         let session = await this.loadSessionAsync(event.address);
 
         let invokeEvent = event as msteams.IInvokeEvent;
         let translation = invokeEvent.value as TranslationResult;
 
-        // Store last few translations
+        // Store last few translations so we can show them in initial run
         let translationHistory: TranslationResult[] = session.userData.translationHistory || [];
         let existingItemIndex = translationHistory.findIndex(val =>
             (val.text.toLocaleUpperCase() === translation.text.toLocaleUpperCase()) &&
@@ -183,6 +186,8 @@ export class TranslatorBot extends builder.UniversalBot {
         cb(null, msteams.ComposeExtensionResponse.result("list")
             .attachments([{
                 ...this.createTranslationCard(session, translation),
+                // Current FE implementation still expects a title property for the preview, so return a dummy preview item
+                // We can remove the line below when the issue is resolved
                 preview: new builder.ThumbnailCard()
                     .title(" ")
                     .text(" ")
@@ -229,12 +234,13 @@ export class TranslatorBot extends builder.UniversalBot {
         return response.toResponse();
     }
 
-    // Creates a compose extension result from a translation
+    // Create a compose extension result from a translation
     private createTranslationResult(session: builder.Session, translation: TranslationResult): msteams.ComposeExtensionAttachment {
         let card: msteams.ComposeExtensionAttachment = this.createTranslationCard(session, translation);
         card.preview = new builder.ThumbnailCard()
             .title(translation.translatedText)
             .text(session.gettext(translation.to))
+            // Attach a tap action to the preview card, so we get a selectItem callback
             .tap(new builder.CardAction(session)
                 .type("invoke")
                 .value(JSON.stringify(translation)))
@@ -242,7 +248,7 @@ export class TranslatorBot extends builder.UniversalBot {
         return card;
     }
 
-    // Creates a compose extension result from a translation history item
+    // Create a compose extension result from a translation history item
     private createTranslationHistoryResult(session: builder.Session, translation: TranslationResult): msteams.ComposeExtensionAttachment {
         let card: msteams.ComposeExtensionAttachment = this.createTranslationCard(session, translation);
         card.preview = new builder.ThumbnailCard()
@@ -267,7 +273,7 @@ export class TranslatorBot extends builder.UniversalBot {
             .toAttachment();
     }
 
-    // Updates Translator settings
+    // Update Translator settings
     private updateSettings(session: builder.Session, state: string): void {
         // State is a comma-separated list of languages
         state = state || "";
@@ -283,12 +289,12 @@ export class TranslatorBot extends builder.UniversalBot {
         session.save().sendBatch();
     }
 
-    // Gets the languages we should translate into
+    // Get the languages we should translate into
     private getTranslationLanguages(session: builder.Session): string[] {
         return session.userData.languages || this.translator.getDefaultLanguages();
     }
 
-    // Returns the value of the specified query parameter
+    // Return the value of the specified query parameter
     private getQueryParameter(query: msteams.ComposeExtensionQuery, name: string): string {
         let matchingParams = (query.parameters || []).filter(p => p.name === name);
         return matchingParams.length ? matchingParams[0].value : "";

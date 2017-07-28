@@ -1,10 +1,10 @@
 {
     "app": {
-        "baseUri": "https://trelloteamsapp.azurewebsites.net",
+        "baseUri": "https://translator-msteams.azurewebsites.net",
         "instrumentationKey": ""
     },
     "bot": {
-        "appId": "58ef13de-4707-4a63-8a65-89be4e303759",
+        "appId": "aadd1e75-c0eb-49e5-aae5-a48805a7911f",
         "appPassword": "<secret>"
     },
     "translator": {

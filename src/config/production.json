@@ -1,9 +1,9 @@
 {
     "app": {
-        "baseUri": "https://trelloteamsapp.azurewebsites.net" 
+        "baseUri": "https://translator-msteams.azurewebsites.net" 
     },
     "bot": {
-        "appId": "86538266-ca86-48a8-b752-01d37a2970a5"
+        "appId": "84c4a338-e5a0-4ade-b855-1f53a6d9b95d"
     },
     "mongoDb": {
         "botStateCollection": "BotState"
