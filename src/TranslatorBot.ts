@@ -183,6 +183,8 @@ export class TranslatorBot extends builder.UniversalBot {
         session.userData.translationHistory = translationHistory;
         session.save().sendBatch();
 
+        // This callback can only return a card -- right now it does not support returning a message response
+        // To show an error message, consider returning a card with error text.
         cb(null, msteams.ComposeExtensionResponse.result("list")
             .attachments([{
                 ...this.createTranslationCard(session, translation),
