@@ -38,6 +38,7 @@ export const Strings = {
    "it": "it",
    "ja": "ja",
    "sw": "sw",
+   "tlh": "tlh",
    "ko": "ko",
    "lv": "lv",
    "lt": "lt",
