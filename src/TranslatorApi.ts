@@ -38,7 +38,6 @@ const supportedLanguages: string[] = [
     "id",
     "it",
     "ja",
-    "sw",
     "tlh",
     "ko",
     "lv",
