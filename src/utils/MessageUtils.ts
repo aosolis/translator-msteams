@@ -241,3 +241,13 @@ function createAddressFromResponse(address: builder.IChatConnectorAddress, respo
     }
     return result;
 }
+
+// Get locale from client info in event
+export function getLocale(evt: builder.IEvent): string {
+    let event = (evt as any);
+    if (event.entities && event.entities.length) {
+        let clientInfo = event.entities.find(e => e.type && e.type === "clientInfo");
+        return clientInfo.locale;
+    }
+    return null;
+}
