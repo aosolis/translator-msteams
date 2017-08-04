@@ -14,7 +14,6 @@ const maxTranslationHistory = 5;
 
 export class TranslatorBot extends builder.UniversalBot {
 
-    private loadSessionAsync: {(address: builder.IEvent): Promise<builder.Session>};
     private translator: TranslatorApi;
 
     constructor(
@@ -26,33 +25,6 @@ export class TranslatorBot extends builder.UniversalBot {
         this.set("persistConversationData", true);
 
         this.translator = botSettings.translator as TranslatorApi;
-
-        // Handle invoke events
-        this.loadSessionAsync = (event) => {
-            return new Promise((resolve, reject) => {
-                this.loadSession(event.address, (err: any, session: builder.Session) => {
-                    if (err) {
-                        winston.error("Failed to load session", { error: err, address: event.address });
-                        reject(err);
-                    } else if (!session) {
-                        winston.error("Loaded null session", { address: event.address });
-                        reject(new Error("Failed to load session"));
-                    } else {
-                        let locale = utils.getLocale(event);
-                        if (locale) {
-                            (session as any)._locale = locale;
-                            session.localizer.load(locale, (err2) => {
-                                // Log but resolve session anyway
-                                winston.error(`Failed to load localizer for ${locale}`, err2);
-                                resolve(session);
-                            });
-                        } else {
-                            resolve (session);
-                        }
-                    }
-                });
-            });
-        };
 
         // Handle compose extension invokes
         let teamsConnector = this._connector as msteams.TeamsChatConnector;
@@ -106,7 +78,7 @@ export class TranslatorBot extends builder.UniversalBot {
 
     // Handle compose extension query invocation
     private async handleTranslateQuery(event: builder.IEvent, query: msteams.ComposeExtensionQuery, cb: (err: Error, result: msteams.IComposeExtensionResponse, statusCode?: number) => void): Promise<void> {
-        let session = await this.loadSessionAsync(event);
+        let session = await utils.loadSessionAsync(this, event);
 
         let text = this.getQueryParameter(query, "text");
         let initialRun = !!this.getQueryParameter(query, "initialRun");
@@ -156,13 +128,13 @@ export class TranslatorBot extends builder.UniversalBot {
 
     // Handle compose extension query settings url callback
     private async handleQuerySettingsUrl(event: builder.IEvent, query: msteams.ComposeExtensionQuery, cb: (err: Error, result: msteams.IComposeExtensionResponse, statusCode?: number) => void): Promise<void> {
-        let session = await this.loadSessionAsync(event);
+        let session = await utils.loadSessionAsync(this, event);
         cb(null, this.createConfigurationResponse(session));
     }
 
     // Handle compose extension settings update callback
     private async handleSettingsUpdate(event: builder.IEvent, query: msteams.ComposeExtensionQuery, cb: (err: Error, result: msteams.IComposeExtensionResponse, statusCode?: number) => void): Promise<void> {
-        let session = await this.loadSessionAsync(event);
+        let session = await utils.loadSessionAsync(this, event);
         let incomingSettings = query.state;
         if (incomingSettings) {
             this.updateSettings(session, incomingSettings);
@@ -174,7 +146,7 @@ export class TranslatorBot extends builder.UniversalBot {
 
     // Handle compose extension item selected callback
     private async handleSelectItem(event: builder.IEvent, query: msteams.ComposeExtensionQuery, cb: (err: Error, result: msteams.IComposeExtensionResponse, statusCode?: number) => void): Promise<void> {
-        let session = await this.loadSessionAsync(event);
+        let session = await utils.loadSessionAsync(this, event);
 
         let invokeEvent = event as msteams.IInvokeEvent;
         let translation = invokeEvent.value as TranslationResult;

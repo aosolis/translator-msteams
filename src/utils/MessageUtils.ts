@@ -1,6 +1,7 @@
 import urlJoin = require("url-join");
 import * as builder from "botbuilder";
 import * as request from "request";
+import * as winston from "winston";
 
 // Helpers for working with messages
 
@@ -250,4 +251,31 @@ export function getLocale(evt: builder.IEvent): string {
         return clientInfo.locale;
     }
     return null;
+}
+
+// Load a Session corresponding to the given event
+export function loadSessionAsync(bot: builder.UniversalBot, event: builder.IEvent): Promise<builder.Session> {
+    return new Promise((resolve, reject) => {
+        bot.loadSession(event.address, (err: any, session: builder.Session) => {
+            if (err) {
+                winston.error("Failed to load session", { error: err, address: event.address });
+                reject(err);
+            } else if (!session) {
+                winston.error("Loaded null session", { address: event.address });
+                reject(new Error("Failed to load session"));
+            } else {
+                let locale = getLocale(event);
+                if (locale) {
+                    (session as any)._locale = locale;
+                    session.localizer.load(locale, (err2) => {
+                        // Log but resolve session anyway
+                        winston.error(`Failed to load localizer for ${locale}`, err2);
+                        resolve(session);
+                    });
+                } else {
+                    resolve (session);
+                }
+            }
+        });
+    });
 }
