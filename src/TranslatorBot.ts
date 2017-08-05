@@ -43,7 +43,9 @@ export class TranslatorBot extends builder.UniversalBot {
                             (session as any)._locale = locale;
                             session.localizer.load(locale, (err2) => {
                                 // Log but resolve session anyway
-                                winston.error(`Failed to load localizer for ${locale}`, err2);
+                                if (err2) {
+                                    winston.error(`Failed to load localizer for ${locale}`, err2);
+                                }
                                 resolve(session);
                             });
                         } else {
