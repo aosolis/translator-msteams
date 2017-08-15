@@ -2,6 +2,7 @@ import * as config from "config";
 import * as builder from "botbuilder";
 import * as msteams from "botbuilder-teams";
 import * as winston from "winston";
+import * as consts from "./constants";
 import * as utils from "./utils";
 import { TranslatorApi, TranslationResult } from "./TranslatorApi";
 import { Strings } from "./locale/locale";
@@ -78,10 +79,11 @@ export class TranslatorBot extends builder.UniversalBot {
 
     // Handle compose extension query invocation
     private async handleTranslateQuery(event: builder.IEvent, query: msteams.ComposeExtensionQuery, cb: (err: Error, result: msteams.IComposeExtensionResponse, statusCode?: number) => void): Promise<void> {
-        let session = await utils.loadSessionAsync(this, event);
-
         let text = this.getQueryParameter(query, "text");
         let initialRun = !!this.getQueryParameter(query, "initialRun");
+        utils.trackEvent(consts.TelemetryEvent.Compose, { type: "query", command: "translate", initialRun }, event);
+
+        let session = await utils.loadSessionAsync(this, event);
 
         // Handle settings coming in part of a query, as happens when we return a configuration response
         let incomingSettings = query.state;
@@ -128,12 +130,16 @@ export class TranslatorBot extends builder.UniversalBot {
 
     // Handle compose extension query settings url callback
     private async handleQuerySettingsUrl(event: builder.IEvent, query: msteams.ComposeExtensionQuery, cb: (err: Error, result: msteams.IComposeExtensionResponse, statusCode?: number) => void): Promise<void> {
+        utils.trackEvent(consts.TelemetryEvent.Compose, { type: "querySettingsUrl" }, event);
+
         let session = await utils.loadSessionAsync(this, event);
         cb(null, this.createConfigurationResponse(session));
     }
 
     // Handle compose extension settings update callback
     private async handleSettingsUpdate(event: builder.IEvent, query: msteams.ComposeExtensionQuery, cb: (err: Error, result: msteams.IComposeExtensionResponse, statusCode?: number) => void): Promise<void> {
+        utils.trackEvent(consts.TelemetryEvent.Compose, { type: "settingsUpdate" }, event);
+
         let session = await utils.loadSessionAsync(this, event);
         let incomingSettings = query.state;
         if (incomingSettings) {
@@ -146,10 +152,15 @@ export class TranslatorBot extends builder.UniversalBot {
 
     // Handle compose extension item selected callback
     private async handleSelectItem(event: builder.IEvent, query: msteams.ComposeExtensionQuery, cb: (err: Error, result: msteams.IComposeExtensionResponse, statusCode?: number) => void): Promise<void> {
-        let session = await utils.loadSessionAsync(this, event);
-
         let invokeEvent = event as msteams.IInvokeEvent;
-        let translation = invokeEvent.value as TranslationResult;
+
+        let translation = invokeEvent.value.translation as TranslationResult;
+        let source = invokeEvent.value.source;
+        utils.trackEvent(consts.TelemetryEvent.Compose,
+            { type: "selectItem", to: translation.to, from: translation.from, source: source },
+            event);
+
+        let session = await utils.loadSessionAsync(this, event);
 
         // Store last few translations so we can show them in initial run
         let translationHistory: TranslationResult[] = session.userData.translationHistory || [];
@@ -229,7 +240,7 @@ export class TranslatorBot extends builder.UniversalBot {
             // Attach a tap action to the preview card, so we get a selectItem callback
             .tap(new builder.CardAction(session)
                 .type("invoke")
-                .value(JSON.stringify(translation)))
+                .value(JSON.stringify({ translation, source: "query" })))
             .toAttachment();
         return card;
     }
@@ -242,7 +253,7 @@ export class TranslatorBot extends builder.UniversalBot {
             .text(translation.text)
             .tap(new builder.CardAction(session)
                 .type("invoke")
-                .value(JSON.stringify(translation)))
+                .value(JSON.stringify({ translation, source: "history"})))
             .toAttachment();
         return card;
     }
