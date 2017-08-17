@@ -10,7 +10,7 @@
     "translator": {
         "accessKey": "<secret>"
     },
-    "storage": "botFramework",
+    "storage": "mongoDb",
     "mongoDb": {
         "connectionString": "",
         "botStateCollection": "BotState-Test"
