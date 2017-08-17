@@ -25,6 +25,15 @@
   "configurableTabs": [
   ],
   "staticTabs": [
+    {
+      "name": "Translate",
+      "entityId": "translate",
+      "contentUrl": "https://www.bing.com/translator",
+      "websiteUrl": "https://www.bing.com/translator",
+      "scopes": [
+        "personal"
+      ]
+    }
   ],
   "bots": [
   ],
