@@ -215,11 +215,14 @@ export class TranslatorBot extends builder.UniversalBot {
     // Get compose extension response that lets the user configurfe Translator
     private createConfigurationResponse(session: builder.Session, translationLanguages?: string[]): msteams.IComposeExtensionResponse {
         translationLanguages = translationLanguages || this.getTranslationLanguages(session);
+
         let baseUri = config.get("app.baseUri");
         let configPage = session.gettext(Strings.configure_page);
+
+        let [ width, height ] = [ 600, 700 ];
         let languages = translationLanguages.join(",");
         let response = msteams.ComposeExtensionResponse.config().actions([
-            builder.CardAction.openUrl(session, `${baseUri}/html/${configPage}?languages=${languages}`, Strings.configure_text),
+            builder.CardAction.openUrl(session, `${baseUri}/html/${configPage}?width=${width}&height=${height}&languages=${languages}`, Strings.configure_text),
         ]);
         return response.toResponse();
     }
