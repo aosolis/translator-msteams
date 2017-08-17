@@ -16,6 +16,7 @@
         "botStateCollection": "BotState-Test"
     },
     "features": {
-        "allowConfigurationViaQuery": true
+        "allowConfigurationViaQuery": true,
+        "enableSelectItemCallback": true
     }
 }

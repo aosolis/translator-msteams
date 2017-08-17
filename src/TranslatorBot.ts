@@ -234,27 +234,36 @@ export class TranslatorBot extends builder.UniversalBot {
     // Create a compose extension result from a translation
     private createTranslationResult(session: builder.Session, translation: TranslationResult): msteams.ComposeExtensionAttachment {
         let card: msteams.ComposeExtensionAttachment = this.createTranslationCard(session, translation);
-        card.preview = new builder.ThumbnailCard()
+        let preview = new builder.ThumbnailCard()
             .title(translation.translatedText)
-            .text(session.gettext(translation.to))
-            // Attach a tap action to the preview card, so we get a selectItem callback
-            .tap(new builder.CardAction(session)
+            .text(session.gettext(translation.to));
+
+        // Attach a tap action to the preview card, so we get a selectItem callback
+        if (config.get("features.enableSelectItemCallback")) {
+            preview.tap(new builder.CardAction(session)
                 .type("invoke")
-                .value(JSON.stringify({ translation, source: "query" })))
-            .toAttachment();
+                .value(JSON.stringify({ translation, source: "query" })));
+        }
+
+        card.preview = preview.toAttachment();
         return card;
     }
 
     // Create a compose extension result from a translation history item
     private createTranslationHistoryResult(session: builder.Session, translation: TranslationResult): msteams.ComposeExtensionAttachment {
         let card: msteams.ComposeExtensionAttachment = this.createTranslationCard(session, translation);
-        card.preview = new builder.ThumbnailCard()
+        let preview = new builder.ThumbnailCard()
             .title(translation.translatedText)
-            .text(translation.text)
-            .tap(new builder.CardAction(session)
+            .text(translation.text);
+
+        // Attach a tap action to the preview card, so we get a selectItem callback
+        if (config.get("features.enableSelectItemCallback")) {
+            preview.tap(new builder.CardAction(session)
                 .type("invoke")
-                .value(JSON.stringify({ translation, source: "history"})))
-            .toAttachment();
+                .value(JSON.stringify({ translation, source: "history" })));
+        }
+
+        card.preview = preview.toAttachment();
         return card;
     }
 

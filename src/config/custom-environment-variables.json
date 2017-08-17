@@ -12,5 +12,8 @@
     },
     "mongoDb": {
         "connectionString": "MONGODB_CONNECTION_STRING"
+    },
+    "features": {
+        "enableSelectItemCallback": "ENABLE_SELECTITEMCALLBACK"
     }
 }
