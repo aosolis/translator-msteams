@@ -1,8 +1,11 @@
+// Copyright (c) Microsoft. All rights reserved.
+
 import * as assert from "assert";
 import * as async from "async";
 import * as builder from "botbuilder";
 import * as mongodb from "mongodb";
 import * as winston from "winston";
+import { IBotExtendedStorage } from "./BotExtendedStorage";
 
 // tslint:disable-next-line:variable-name
 const Fields = {
@@ -12,7 +15,7 @@ const Fields = {
 };
 
 /** Replacable storage system used by UniversalBot. */
-export class MongoDbBotStorage implements builder.IBotStorage {
+export class MongoDbBotStorage implements IBotExtendedStorage {
 
     private initializePromise: Promise<void>;
     private mongoDb: mongodb.Db;
@@ -55,7 +58,7 @@ export class MongoDbBotStorage implements builder.IBotStorage {
             // Execute reads in parallel
             let data: builder.IBotStorageData = {};
             async.each(list, (entry, cb) => {
-                let filter = { "_id": entry.id };
+                let filter = { key: entry.id };
                 this.botStateCollection.findOne(filter, (error: any, entity: any) => {
                     if (!error) {
                         if (entity) {
@@ -124,12 +127,17 @@ export class MongoDbBotStorage implements builder.IBotStorage {
 
             // Execute writes in parallel
             async.each(list, (entry, errorCallback) => {
-                let filter = { "_id": entry.id };
-                let document = {
-                    // Tag each document with user id so we can find all user data later
-                    userId: entry.userId || "",
+                let filter = { key: entry.id };
+                let document: any = {
+                    key: entry.id,
+                    field: entry.field,
                     data: entry.botData,
+                    lastUpdate: new Date().valueOf(),
                 };
+                // Tag document with user id so we can find all user data later
+                if (entry.userId) {
+                    document.userId = entry.userId;
+                }
                 this.botStateCollection.updateOne(filter, document, { upsert: true }, err => errorCallback(err));
             }, (err) => {
                 if (callback) {
@@ -142,6 +150,32 @@ export class MongoDbBotStorage implements builder.IBotStorage {
                 }
             });
         }, (err) => callback(err));
+    }
+
+    // Lookup user data by AAD object id
+    public async getUserDataByAadObjectIdAsync(aadObjectId: string): Promise<any> {
+        await this.initialize();
+
+        let filter = {
+            field: Fields.userData,
+            "data.aadObjectId": aadObjectId,
+        };
+        let entity = await this.botStateCollection.findOne(filter);
+        if (entity) {
+            return entity.data || {};
+        } else {
+            return null;
+        }
+    }
+
+    public getAAdObjectId(userData: any): string {
+        // This implementation sets the AAD object ID directly on userData
+        return userData.aadObjectId;
+    }
+
+    public setAAdObjectId(userData: any, aadObjectId: string): void {
+        // This implementation sets the AAD object ID directly on userData
+        userData.aadObjectId = aadObjectId;
     }
 
     // Returns a promise that is resolved when this instance is initialized
@@ -158,7 +192,10 @@ export class MongoDbBotStorage implements builder.IBotStorage {
             try {
                 this.mongoDb = await mongodb.MongoClient.connect(this.connectionString);
                 this.botStateCollection = await this.mongoDb.collection(this.collectionName);
-                this.botStateCollection.createIndex({ userId: 1 });
+
+                // Set up indexes
+                await this.botStateCollection.createIndex({ key: 1 });
+                await this.botStateCollection.createIndex({ lastUpdate: 1 });
             } catch (e) {
                 winston.error(`Error initializing MongoDB: ${e.message}`, e);
                 this.close();
